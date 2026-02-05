@@ -1331,27 +1331,69 @@ export class TwentyClient {
 
   // ============================================
   // IS Lead (Inside Sales Lead) Methods
+  // Using GraphQL API (REST API has auth issues)
   // ============================================
+
+  private readonly isLeadFields = `
+    id
+    name
+    phase
+    country
+    industry
+    leadSource
+    instagramAccount
+    customerNeeds
+    quantity
+    priceRangeMin
+    priceRangeMax
+    expectedRevenue {
+      amountMicros
+      currencyCode
+    }
+    firstApproachDate
+    firstApproachMessage
+    lastContactDate
+    lostReason
+    memo
+    createdAt
+    updatedAt
+  `;
 
   /**
    * IS Leadを作成する
    */
   async createIsLead(input: CreateIsLeadInput): Promise<IsLead> {
+    const mutation = `
+      mutation CreateInsideSalesLead($data: InsideSalesLeadCreateInput!) {
+        createInsideSalesLead(data: $data) {
+          ${this.isLeadFields}
+        }
+      }
+    `;
+
     const data = {
       ...input,
       phase: input.phase || 'VALID_REPLY',
     };
-    return this.restFetch<IsLead>('insideSalesLeads', {
-      method: 'POST',
-      body: data,
-    });
+
+    const result = await this.client.request(mutation, { data }) as { createInsideSalesLead: IsLead };
+    return result.createInsideSalesLead;
   }
 
   /**
    * IS LeadをIDで取得する
    */
   async getIsLead(id: string): Promise<IsLead> {
-    return this.restFetch<IsLead>(`insideSalesLeads/${id}`);
+    const query = `
+      query GetInsideSalesLead($id: ID!) {
+        insideSalesLead(filter: { id: { eq: $id } }) {
+          ${this.isLeadFields}
+        }
+      }
+    `;
+
+    const result = await this.client.request(query, { id }) as { insideSalesLead: IsLead };
+    return result.insideSalesLead;
   }
 
   /**
@@ -1359,135 +1401,159 @@ export class TwentyClient {
    */
   async updateIsLead(input: UpdateIsLeadInput): Promise<IsLead> {
     const { id, ...data } = input;
-    return this.restFetch<IsLead>(`insideSalesLeads/${id}`, {
-      method: 'PATCH',
-      body: data,
-    });
+    const mutation = `
+      mutation UpdateInsideSalesLead($id: ID!, $data: InsideSalesLeadUpdateInput!) {
+        updateInsideSalesLead(id: $id, data: $data) {
+          ${this.isLeadFields}
+        }
+      }
+    `;
+
+    const result = await this.client.request(mutation, { id, data }) as { updateInsideSalesLead: IsLead };
+    return result.updateInsideSalesLead;
   }
 
   /**
    * IS Leadを削除する
    */
   async deleteIsLead(id: string): Promise<void> {
-    await this.restFetch<void>(`insideSalesLeads/${id}`, {
-      method: 'DELETE',
-    });
+    const mutation = `
+      mutation DeleteInsideSalesLead($id: ID!) {
+        deleteInsideSalesLead(id: $id) {
+          id
+        }
+      }
+    `;
+
+    await this.client.request(mutation, { id });
   }
 
   /**
-   * IS Leadを検索する
+   * IS Leadを検索する (GraphQL版)
    */
   async searchIsLeads(input: SearchIsLeadsInput = {}): Promise<IsLead[]> {
-    const params: Record<string, string> = {};
+    const query = `
+      query SearchInsideSalesLeads($filter: InsideSalesLeadFilterInput, $first: Int) {
+        insideSalesLeads(filter: $filter, first: $first) {
+          edges {
+            node {
+              ${this.isLeadFields}
+            }
+          }
+        }
+      }
+    `;
 
-    if (input.limit) {
-      params.limit = input.limit.toString();
-    }
-    if (input.offset) {
-      params.offset = input.offset.toString();
-    }
+    // フィルタ構築
+    const filters: any[] = [];
+
     if (input.query) {
-      params['filter[name][contains]'] = input.query;
+      filters.push({ name: { ilike: `%${input.query}%` } });
     }
     if (input.phase) {
-      params['filter[phase][eq]'] = input.phase;
+      filters.push({ phase: { eq: input.phase } });
     }
     if (input.leadSource) {
-      params['filter[leadSource][eq]'] = input.leadSource;
+      filters.push({ leadSource: { eq: input.leadSource } });
     }
     if (input.country) {
-      params['filter[country][eq]'] = input.country;
+      filters.push({ country: { ilike: `%${input.country}%` } });
     }
 
-    const response = await this.restFetch<{ data: IsLead[] }>('insideSalesLeads', { params });
-    return response.data || [];
+    const filter = filters.length > 0 ? { and: filters } : undefined;
+
+    const result = await this.client.request(query, {
+      filter,
+      first: input.limit || 50,
+    }) as { insideSalesLeads: { edges: { node: IsLead }[] } };
+
+    return result.insideSalesLeads.edges.map(edge => edge.node);
   }
 
   /**
-   * IS Leadをフェーズ別に一覧表示する
+   * IS Leadをフェーズ別に一覧表示する (GraphQL版)
    */
   async listIsLeadsByPhase(): Promise<IsLeadsByPhase> {
-    // 全件取得（REST APIは20件制限があるため、複数回呼び出す）
-    const allLeads: IsLead[] = [];
-    let offset = 0;
-    const limit = 100;
-    let hasMore = true;
-
-    while (hasMore) {
-      const response = await this.restFetch<{ data: IsLead[] }>('insideSalesLeads', {
-        params: {
-          limit: limit.toString(),
-          offset: offset.toString(),
-        },
-      });
-
-      const leads = response.data || [];
-      allLeads.push(...leads);
-
-      if (leads.length < limit) {
-        hasMore = false;
-      } else {
-        offset += limit;
+    const query = `
+      query ListAllInsideSalesLeads {
+        insideSalesLeads(first: 500) {
+          totalCount
+          edges {
+            node {
+              ${this.isLeadFields}
+            }
+          }
+        }
       }
-    }
+    `;
+
+    const result = await this.client.request(query) as {
+      insideSalesLeads: { totalCount: number; edges: { node: IsLead }[] }
+    };
+
+    const allLeads = result.insideSalesLeads.edges.map(edge => edge.node);
 
     // フェーズ別にグループ化
-    const result: IsLeadsByPhase = {
+    const grouped: IsLeadsByPhase = {
       VALID_REPLY: [],
       LOST: [],
       ON_HOLD: [],
       CONVERTED: [],
-      totalCount: allLeads.length,
+      totalCount: result.insideSalesLeads.totalCount,
     };
 
     for (const lead of allLeads) {
       const phase = lead.phase as keyof Omit<IsLeadsByPhase, 'totalCount'>;
-      if (result[phase]) {
-        result[phase].push(lead);
+      if (grouped[phase]) {
+        grouped[phase].push(lead);
       }
     }
 
-    return result;
+    return grouped;
   }
 
   /**
-   * IS Leadの統計情報を取得する
+   * IS Leadの統計情報を取得する (GraphQL版)
    */
   async getIsLeadStats(startDate?: string, endDate?: string): Promise<IsLeadStats> {
-    // 全件取得
-    const allLeads: IsLead[] = [];
-    let offset = 0;
-    const limit = 100;
-    let hasMore = true;
+    let filter: any = undefined;
 
-    while (hasMore) {
-      const params: Record<string, string> = {
-        limit: limit.toString(),
-        offset: offset.toString(),
-      };
-
-      // 日付フィルタ（作成日ベース）
+    if (startDate || endDate) {
+      const dateFilters: any[] = [];
       if (startDate) {
-        params['filter[createdAt][gte]'] = startDate;
+        dateFilters.push({ createdAt: { gte: startDate } });
       }
       if (endDate) {
-        params['filter[createdAt][lte]'] = endDate;
+        dateFilters.push({ createdAt: { lte: endDate } });
       }
-
-      const response = await this.restFetch<{ data: IsLead[] }>('insideSalesLeads', { params });
-      const leads = response.data || [];
-      allLeads.push(...leads);
-
-      if (leads.length < limit) {
-        hasMore = false;
-      } else {
-        offset += limit;
-      }
+      filter = { and: dateFilters };
     }
+
+    const query = `
+      query GetInsideSalesLeadStats($filter: InsideSalesLeadFilterInput) {
+        insideSalesLeads(filter: $filter, first: 500) {
+          totalCount
+          edges {
+            node {
+              phase
+              leadSource
+              country
+              lostReason
+            }
+          }
+        }
+      }
+    `;
+
+    const result = await this.client.request(query, { filter }) as {
+      insideSalesLeads: { totalCount: number; edges: { node: Partial<IsLead> }[] }
+    };
+
+    const allLeads = result.insideSalesLeads.edges.map(edge => edge.node);
 
     // 統計を集計
     const stats: IsLeadStats = {
-      totalLeads: allLeads.length,
+      totalLeads: result.insideSalesLeads.totalCount,
       byPhase: {
         VALID_REPLY: 0,
         LOST: 0,
@@ -1509,7 +1575,7 @@ export class TwentyClient {
     for (const lead of allLeads) {
       // フェーズ別
       const phase = lead.phase as keyof typeof stats.byPhase;
-      if (stats.byPhase[phase] !== undefined) {
+      if (phase && stats.byPhase[phase] !== undefined) {
         stats.byPhase[phase]++;
       }
 
