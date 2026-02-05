@@ -62,6 +62,7 @@ server.stderr.once('data', (data) => {
 });
 
 function getToolCategory(toolName) {
+  if (toolName.includes('is_lead')) return 'IS Leads';
   if (toolName.includes('contact') || toolName.includes('person')) return 'Contacts';
   if (toolName.includes('company')) return 'Companies';
   if (toolName.includes('opportunity')) return 'Opportunities';

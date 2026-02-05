@@ -4,6 +4,7 @@ import { TwentyClient } from '../client/twenty-client.js';
 import { registerOpportunityTools } from './opportunities.js';
 import { registerActivityTools } from './activities.js';
 import { registerMetadataTools } from './metadata.js';
+import { registerIsLeadTools } from './is-leads.js';
 
 export function registerPersonTools(server: McpServer, client: TwentyClient) {
   server.tool(
@@ -692,4 +693,4 @@ export function registerRelationshipTools(server: McpServer, client: TwentyClien
   );
 }
 
-export { registerOpportunityTools, registerActivityTools, registerMetadataTools };
+export { registerOpportunityTools, registerActivityTools, registerMetadataTools, registerIsLeadTools };

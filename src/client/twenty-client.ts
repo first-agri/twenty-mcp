@@ -3,10 +3,10 @@ import { TwentyConfig, Person, Company, Task, Note, SearchOptions } from '../typ
 import { Opportunity, CreateOpportunityInput, UpdateOpportunityInput, SearchOpportunitiesInput } from '../types/opportunities.js';
 import { Activity, Comment, CreateCommentInput, ActivityFilter, EntityActivitiesInput, ActivityTimeline } from '../types/activities.js';
 import { ObjectMetadata, FieldMetadata, ObjectSchema, ObjectSummary, MetadataQueryOptions, FieldQueryOptions } from '../types/metadata.js';
-import { 
-  RelationshipSummary, 
-  CompanyContactsResult, 
-  PersonOpportunitiesResult, 
+import {
+  RelationshipSummary,
+  CompanyContactsResult,
+  PersonOpportunitiesResult,
   OpportunityActivitiesResult,
   RelationshipHierarchy,
   OrphanedRecords,
@@ -14,19 +14,65 @@ import {
   TransferContactInput,
   BulkRelationshipUpdate
 } from '../types/relationships.js';
+import {
+  IsLead,
+  CreateIsLeadInput,
+  UpdateIsLeadInput,
+  SearchIsLeadsInput,
+  IsLeadsByPhase,
+  IsLeadStats
+} from '../types/is-leads.js';
 
 export class TwentyClient {
   private client: GraphQLClient;
   private baseUrl: string;
+  private apiKey: string;
 
   constructor(config: TwentyConfig) {
     this.baseUrl = config.baseUrl || 'https://api.twenty.com';
+    this.apiKey = config.apiKey;
     this.client = new GraphQLClient(`${this.baseUrl}/graphql`, {
       headers: {
         'Authorization': `Bearer ${config.apiKey}`,
         'Content-Type': 'application/json',
       },
     });
+  }
+
+  /**
+   * REST API用のfetchヘルパー
+   */
+  private async restFetch<T>(
+    endpoint: string,
+    options: {
+      method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+      body?: any;
+      params?: Record<string, string>;
+    } = {}
+  ): Promise<T> {
+    const { method = 'GET', body, params } = options;
+
+    let url = `${this.baseUrl}/rest/${endpoint}`;
+    if (params) {
+      const searchParams = new URLSearchParams(params);
+      url += `?${searchParams.toString()}`;
+    }
+
+    const response = await fetch(url, {
+      method,
+      headers: {
+        'Authorization': `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      ...(body && { body: JSON.stringify(body) }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`REST API error (${response.status}): ${error}`);
+    }
+
+    return response.json();
   }
 
   async createPerson(person: Person): Promise<Person> {
@@ -1281,5 +1327,208 @@ export class TwentyClient {
     }
 
     return orphaned;
+  }
+
+  // ============================================
+  // IS Lead (Inside Sales Lead) Methods
+  // ============================================
+
+  /**
+   * IS Leadを作成する
+   */
+  async createIsLead(input: CreateIsLeadInput): Promise<IsLead> {
+    const data = {
+      ...input,
+      phase: input.phase || 'VALID_REPLY',
+    };
+    return this.restFetch<IsLead>('insideSalesLeads', {
+      method: 'POST',
+      body: data,
+    });
+  }
+
+  /**
+   * IS LeadをIDで取得する
+   */
+  async getIsLead(id: string): Promise<IsLead> {
+    return this.restFetch<IsLead>(`insideSalesLeads/${id}`);
+  }
+
+  /**
+   * IS Leadを更新する
+   */
+  async updateIsLead(input: UpdateIsLeadInput): Promise<IsLead> {
+    const { id, ...data } = input;
+    return this.restFetch<IsLead>(`insideSalesLeads/${id}`, {
+      method: 'PATCH',
+      body: data,
+    });
+  }
+
+  /**
+   * IS Leadを削除する
+   */
+  async deleteIsLead(id: string): Promise<void> {
+    await this.restFetch<void>(`insideSalesLeads/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  /**
+   * IS Leadを検索する
+   */
+  async searchIsLeads(input: SearchIsLeadsInput = {}): Promise<IsLead[]> {
+    const params: Record<string, string> = {};
+
+    if (input.limit) {
+      params.limit = input.limit.toString();
+    }
+    if (input.offset) {
+      params.offset = input.offset.toString();
+    }
+    if (input.query) {
+      params['filter[name][contains]'] = input.query;
+    }
+    if (input.phase) {
+      params['filter[phase][eq]'] = input.phase;
+    }
+    if (input.leadSource) {
+      params['filter[leadSource][eq]'] = input.leadSource;
+    }
+    if (input.country) {
+      params['filter[country][eq]'] = input.country;
+    }
+
+    const response = await this.restFetch<{ data: IsLead[] }>('insideSalesLeads', { params });
+    return response.data || [];
+  }
+
+  /**
+   * IS Leadをフェーズ別に一覧表示する
+   */
+  async listIsLeadsByPhase(): Promise<IsLeadsByPhase> {
+    // 全件取得（REST APIは20件制限があるため、複数回呼び出す）
+    const allLeads: IsLead[] = [];
+    let offset = 0;
+    const limit = 100;
+    let hasMore = true;
+
+    while (hasMore) {
+      const response = await this.restFetch<{ data: IsLead[] }>('insideSalesLeads', {
+        params: {
+          limit: limit.toString(),
+          offset: offset.toString(),
+        },
+      });
+
+      const leads = response.data || [];
+      allLeads.push(...leads);
+
+      if (leads.length < limit) {
+        hasMore = false;
+      } else {
+        offset += limit;
+      }
+    }
+
+    // フェーズ別にグループ化
+    const result: IsLeadsByPhase = {
+      VALID_REPLY: [],
+      LOST: [],
+      ON_HOLD: [],
+      CONVERTED: [],
+      totalCount: allLeads.length,
+    };
+
+    for (const lead of allLeads) {
+      const phase = lead.phase as keyof Omit<IsLeadsByPhase, 'totalCount'>;
+      if (result[phase]) {
+        result[phase].push(lead);
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * IS Leadの統計情報を取得する
+   */
+  async getIsLeadStats(startDate?: string, endDate?: string): Promise<IsLeadStats> {
+    // 全件取得
+    const allLeads: IsLead[] = [];
+    let offset = 0;
+    const limit = 100;
+    let hasMore = true;
+
+    while (hasMore) {
+      const params: Record<string, string> = {
+        limit: limit.toString(),
+        offset: offset.toString(),
+      };
+
+      // 日付フィルタ（作成日ベース）
+      if (startDate) {
+        params['filter[createdAt][gte]'] = startDate;
+      }
+      if (endDate) {
+        params['filter[createdAt][lte]'] = endDate;
+      }
+
+      const response = await this.restFetch<{ data: IsLead[] }>('insideSalesLeads', { params });
+      const leads = response.data || [];
+      allLeads.push(...leads);
+
+      if (leads.length < limit) {
+        hasMore = false;
+      } else {
+        offset += limit;
+      }
+    }
+
+    // 統計を集計
+    const stats: IsLeadStats = {
+      totalLeads: allLeads.length,
+      byPhase: {
+        VALID_REPLY: 0,
+        LOST: 0,
+        ON_HOLD: 0,
+        CONVERTED: 0,
+      },
+      bySource: {},
+      byCountry: {},
+      lostReasons: {},
+    };
+
+    if (startDate || endDate) {
+      stats.period = {
+        startDate: startDate || '',
+        endDate: endDate || '',
+      };
+    }
+
+    for (const lead of allLeads) {
+      // フェーズ別
+      const phase = lead.phase as keyof typeof stats.byPhase;
+      if (stats.byPhase[phase] !== undefined) {
+        stats.byPhase[phase]++;
+      }
+
+      // ソース別
+      if (lead.leadSource) {
+        stats.bySource[lead.leadSource] = (stats.bySource[lead.leadSource] || 0) + 1;
+      }
+
+      // 国別
+      if (lead.country) {
+        stats.byCountry[lead.country] = (stats.byCountry[lead.country] || 0) + 1;
+      }
+
+      // 失注理由別（LOSTフェーズのみ）
+      if (lead.phase === 'LOST' && lead.lostReason) {
+        stats.lostReasons[lead.lostReason] = (stats.lostReasons[lead.lostReason] || 0) + 1;
+      }
+    }
+
+    return stats;
   }
 }
