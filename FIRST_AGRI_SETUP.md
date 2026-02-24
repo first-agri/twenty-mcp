@@ -143,7 +143,7 @@ ABC Coffeeを失注に変更。理由は価格不一致
 | フィールド | 説明 | 例 |
 |-----------|------|-----|
 | name | 顧客名（必須） | ABC Coffee |
-| phase | フェーズ | VALID_REPLY, LOST, ON_HOLD, CONVERTED |
+| phase | フェーズ | UNCONTACTED, APPROACHING, NEW_INQUIRY, VALID_REPLY, NEEDS_CHECK, SAMPLE_AGREED, SANPURUSHOU_ZHU, SANPURUSONG_FU_JI_MI, FB_PENDING, FB_NEGOTIATION, MEETING_SCHEDULING, CONVERTED, WON, ON_HOLD, LOST |
 | country | 国 | USA, UK, Thailand, Japan |
 | leadSource | リードソース | INSTAGRAM, EMAIL, HP, ALIBABA |
 | customerNeeds | 顧客ニーズ | 抹茶ラテ用 |

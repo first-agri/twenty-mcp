@@ -7,10 +7,21 @@
 
 // フェーズ定義
 export type IsLeadPhase =
-  | 'VALID_REPLY'    // 有効返信
-  | 'LOST'           // 失注/離脱
-  | 'ON_HOLD'        // 継続/保留
-  | 'CONVERTED';     // 商談化
+  | 'UNCONTACTED'          // 未接触
+  | 'APPROACHING'          // アプローチ中
+  | 'NEW_INQUIRY'          // 新規問い合わせ
+  | 'VALID_REPLY'          // 有効返信
+  | 'NEEDS_CHECK'          // サンプル提案中
+  | 'SAMPLE_AGREED'        // サンプル合意済み
+  | 'SANPURUSHOU_ZHU'      // サンプル受注
+  | 'SANPURUSONG_FU_JI_MI' // サンプル送付済み
+  | 'FB_PENDING'           // FBフィードバック待ち
+  | 'FB_NEGOTIATION'       // FB商談中
+  | 'MEETING_SCHEDULING'   // 商談日程調整中
+  | 'CONVERTED'            // 商談化
+  | 'WON'                  // 成約
+  | 'ON_HOLD'              // 保留
+  | 'LOST';                // 失注/離脱
 
 // リードソース定義
 export type LeadSource =
@@ -127,10 +138,21 @@ export interface SearchIsLeadsInput {
  * フェーズ別一覧の結果型
  */
 export interface IsLeadsByPhase {
+  UNCONTACTED: IsLead[];
+  APPROACHING: IsLead[];
+  NEW_INQUIRY: IsLead[];
   VALID_REPLY: IsLead[];
-  LOST: IsLead[];
-  ON_HOLD: IsLead[];
+  NEEDS_CHECK: IsLead[];
+  SAMPLE_AGREED: IsLead[];
+  SANPURUSHOU_ZHU: IsLead[];
+  SANPURUSONG_FU_JI_MI: IsLead[];
+  FB_PENDING: IsLead[];
+  FB_NEGOTIATION: IsLead[];
+  MEETING_SCHEDULING: IsLead[];
   CONVERTED: IsLead[];
+  WON: IsLead[];
+  ON_HOLD: IsLead[];
+  LOST: IsLead[];
   totalCount: number;
 }
 
@@ -140,10 +162,21 @@ export interface IsLeadsByPhase {
 export interface IsLeadStats {
   totalLeads: number;
   byPhase: {
+    UNCONTACTED: number;
+    APPROACHING: number;
+    NEW_INQUIRY: number;
     VALID_REPLY: number;
-    LOST: number;
-    ON_HOLD: number;
+    NEEDS_CHECK: number;
+    SAMPLE_AGREED: number;
+    SANPURUSHOU_ZHU: number;
+    SANPURUSONG_FU_JI_MI: number;
+    FB_PENDING: number;
+    FB_NEGOTIATION: number;
+    MEETING_SCHEDULING: number;
     CONVERTED: number;
+    WON: number;
+    ON_HOLD: number;
+    LOST: number;
   };
   bySource: Record<string, number>;
   byCountry: Record<string, number>;

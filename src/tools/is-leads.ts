@@ -9,7 +9,23 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { TwentyClient } from '../client/twenty-client.js';
 
 // フェーズのenum定義
-const phaseEnum = z.enum(['VALID_REPLY', 'LOST', 'ON_HOLD', 'CONVERTED']);
+const phaseEnum = z.enum([
+  'UNCONTACTED',
+  'APPROACHING',
+  'NEW_INQUIRY',
+  'VALID_REPLY',
+  'NEEDS_CHECK',
+  'SAMPLE_AGREED',
+  'SANPURUSHOU_ZHU',
+  'SANPURUSONG_FU_JI_MI',
+  'FB_PENDING',
+  'FB_NEGOTIATION',
+  'MEETING_SCHEDULING',
+  'CONVERTED',
+  'WON',
+  'ON_HOLD',
+  'LOST',
+]);
 
 // リードソースのenum定義
 const leadSourceEnum = z.enum(['INSTAGRAM', 'EMAIL', 'HP', 'ALIBABA']);
@@ -125,7 +141,7 @@ export function registerIsLeadTools(server: McpServer, client: TwentyClient) {
     {
       id: z.string().describe('IS Lead ID to update (required)'),
       name: z.string().optional().describe('Company/Customer name'),
-      phase: phaseEnum.optional().describe('Lead phase: VALID_REPLY, LOST, ON_HOLD, CONVERTED'),
+      phase: phaseEnum.optional().describe('Lead phase: UNCONTACTED, APPROACHING, NEW_INQUIRY, VALID_REPLY, NEEDS_CHECK, SAMPLE_AGREED, SANPURUSHOU_ZHU, SANPURUSONG_FU_JI_MI, FB_PENDING, FB_NEGOTIATION, MEETING_SCHEDULING, CONVERTED, WON, ON_HOLD, LOST'),
       country: z.string().optional().describe('Country'),
       industry: z.string().optional().describe('Industry type'),
       leadSource: leadSourceEnum.optional().describe('Lead source'),
@@ -190,7 +206,7 @@ export function registerIsLeadTools(server: McpServer, client: TwentyClient) {
     'Search for IS Leads in Twenty CRM. Filter by phase, source, country, or search by name.',
     {
       query: z.string().optional().describe('Search query (searches by name)'),
-      phase: phaseEnum.optional().describe('Filter by phase: VALID_REPLY, LOST, ON_HOLD, CONVERTED'),
+      phase: phaseEnum.optional().describe('Filter by phase: UNCONTACTED, APPROACHING, NEW_INQUIRY, VALID_REPLY, NEEDS_CHECK, SAMPLE_AGREED, SANPURUSHOU_ZHU, SANPURUSONG_FU_JI_MI, FB_PENDING, FB_NEGOTIATION, MEETING_SCHEDULING, CONVERTED, WON, ON_HOLD, LOST'),
       leadSource: leadSourceEnum.optional().describe('Filter by source: INSTAGRAM, EMAIL, HP, ALIBABA'),
       country: z.string().optional().describe('Filter by country'),
       limit: z.number().optional().default(20).describe('Maximum number of results (default: 20)'),
@@ -252,7 +268,7 @@ export function registerIsLeadTools(server: McpServer, client: TwentyClient) {
    */
   server.tool(
     'list_is_leads_by_phase',
-    'List all IS Leads grouped by phase. Shows count and names for each phase (VALID_REPLY, LOST, ON_HOLD, CONVERTED).',
+    'List all IS Leads grouped by phase. Shows count and names for each phase (UNCONTACTED, APPROACHING, NEW_INQUIRY, VALID_REPLY, NEEDS_CHECK, SAMPLE_AGREED, SANPURUSHOU_ZHU, SANPURUSONG_FU_JI_MI, FB_PENDING, FB_NEGOTIATION, MEETING_SCHEDULING, CONVERTED, WON, ON_HOLD, LOST).',
     {},
     async () => {
       try {
@@ -262,10 +278,21 @@ export function registerIsLeadTools(server: McpServer, client: TwentyClient) {
         result += '='.repeat(40) + '\n\n';
 
         const phases = [
-          { key: 'VALID_REPLY', label: 'Valid Reply (Active)' },
-          { key: 'ON_HOLD', label: 'On Hold (Pending)' },
-          { key: 'CONVERTED', label: 'Converted (Won)' },
-          { key: 'LOST', label: 'Lost' },
+          { key: 'UNCONTACTED', label: '未接触 (Uncontacted)' },
+          { key: 'APPROACHING', label: 'アプローチ中 (Approaching)' },
+          { key: 'NEW_INQUIRY', label: '新規問い合わせ (New Inquiry)' },
+          { key: 'VALID_REPLY', label: '有効返信 (Valid Reply)' },
+          { key: 'NEEDS_CHECK', label: 'サンプル提案中 (Needs Check)' },
+          { key: 'SAMPLE_AGREED', label: 'サンプル合意済み (Sample Agreed)' },
+          { key: 'SANPURUSHOU_ZHU', label: 'サンプル受注 (Sample Ordered)' },
+          { key: 'SANPURUSONG_FU_JI_MI', label: 'サンプル送付済み (Sample Sent)' },
+          { key: 'FB_PENDING', label: 'FBフィードバック待ち (FB Pending)' },
+          { key: 'FB_NEGOTIATION', label: 'FB商談中 (FB Negotiation)' },
+          { key: 'MEETING_SCHEDULING', label: '商談日程調整中 (Meeting Scheduling)' },
+          { key: 'CONVERTED', label: '商談化 (Converted)' },
+          { key: 'WON', label: '成約 (Won)' },
+          { key: 'ON_HOLD', label: '保留 (On Hold)' },
+          { key: 'LOST', label: '失注 (Lost)' },
         ];
 
         for (const { key, label } of phases) {
@@ -333,10 +360,21 @@ export function registerIsLeadTools(server: McpServer, client: TwentyClient) {
 
         // フェーズ別
         result += '## By Phase:\n';
-        result += `  - Valid Reply: ${stats.byPhase.VALID_REPLY}\n`;
-        result += `  - On Hold: ${stats.byPhase.ON_HOLD}\n`;
-        result += `  - Converted: ${stats.byPhase.CONVERTED}\n`;
-        result += `  - Lost: ${stats.byPhase.LOST}\n\n`;
+        result += `  - 未接触 (UNCONTACTED): ${stats.byPhase.UNCONTACTED}\n`;
+        result += `  - アプローチ中 (APPROACHING): ${stats.byPhase.APPROACHING}\n`;
+        result += `  - 新規問い合わせ (NEW_INQUIRY): ${stats.byPhase.NEW_INQUIRY}\n`;
+        result += `  - 有効返信 (VALID_REPLY): ${stats.byPhase.VALID_REPLY}\n`;
+        result += `  - サンプル提案中 (NEEDS_CHECK): ${stats.byPhase.NEEDS_CHECK}\n`;
+        result += `  - サンプル合意済み (SAMPLE_AGREED): ${stats.byPhase.SAMPLE_AGREED}\n`;
+        result += `  - サンプル受注 (SANPURUSHOU_ZHU): ${stats.byPhase.SANPURUSHOU_ZHU}\n`;
+        result += `  - サンプル送付済み (SANPURUSONG_FU_JI_MI): ${stats.byPhase.SANPURUSONG_FU_JI_MI}\n`;
+        result += `  - FBフィードバック待ち (FB_PENDING): ${stats.byPhase.FB_PENDING}\n`;
+        result += `  - FB商談中 (FB_NEGOTIATION): ${stats.byPhase.FB_NEGOTIATION}\n`;
+        result += `  - 商談日程調整中 (MEETING_SCHEDULING): ${stats.byPhase.MEETING_SCHEDULING}\n`;
+        result += `  - 商談化 (CONVERTED): ${stats.byPhase.CONVERTED}\n`;
+        result += `  - 成約 (WON): ${stats.byPhase.WON}\n`;
+        result += `  - 保留 (ON_HOLD): ${stats.byPhase.ON_HOLD}\n`;
+        result += `  - 失注 (LOST): ${stats.byPhase.LOST}\n\n`;
 
         // ソース別
         if (Object.keys(stats.bySource).length > 0) {

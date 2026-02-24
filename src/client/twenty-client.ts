@@ -1495,10 +1495,21 @@ export class TwentyClient {
 
     // フェーズ別にグループ化
     const grouped: IsLeadsByPhase = {
+      UNCONTACTED: [],
+      APPROACHING: [],
+      NEW_INQUIRY: [],
       VALID_REPLY: [],
-      LOST: [],
-      ON_HOLD: [],
+      NEEDS_CHECK: [],
+      SAMPLE_AGREED: [],
+      SANPURUSHOU_ZHU: [],
+      SANPURUSONG_FU_JI_MI: [],
+      FB_PENDING: [],
+      FB_NEGOTIATION: [],
+      MEETING_SCHEDULING: [],
       CONVERTED: [],
+      WON: [],
+      ON_HOLD: [],
+      LOST: [],
       totalCount: result.insideSalesLeads.totalCount,
     };
 
@@ -1555,10 +1566,21 @@ export class TwentyClient {
     const stats: IsLeadStats = {
       totalLeads: result.insideSalesLeads.totalCount,
       byPhase: {
+        UNCONTACTED: 0,
+        APPROACHING: 0,
+        NEW_INQUIRY: 0,
         VALID_REPLY: 0,
-        LOST: 0,
-        ON_HOLD: 0,
+        NEEDS_CHECK: 0,
+        SAMPLE_AGREED: 0,
+        SANPURUSHOU_ZHU: 0,
+        SANPURUSONG_FU_JI_MI: 0,
+        FB_PENDING: 0,
+        FB_NEGOTIATION: 0,
+        MEETING_SCHEDULING: 0,
         CONVERTED: 0,
+        WON: 0,
+        ON_HOLD: 0,
+        LOST: 0,
       },
       bySource: {},
       byCountry: {},
