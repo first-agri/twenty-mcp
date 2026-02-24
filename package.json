@@ -1,6 +1,6 @@
 {
-  "name": "twenty-mcp-server",
-  "version": "1.3.0",
+  "name": "twenty-mcp-firstagri",
+  "version": "1.0.0",
   "description": "Easy-to-install Model Context Protocol server for Twenty CRM. Try instantly with 'npx twenty-mcp-server setup' or install globally for permanent use.",
   "main": "dist/http-server.js",
   "module": "./src/http-server.ts",
@@ -60,12 +60,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jezweb/twenty-mcp.git"
+    "url": "https://github.com/first-agri/twenty-mcp.git"
   },
   "bugs": {
-    "url": "https://github.com/jezweb/twenty-mcp/issues"
+    "url": "https://github.com/first-agri/twenty-mcp/issues"
   },
-  "homepage": "https://github.com/jezweb/twenty-mcp#readme",
+  "homepage": "https://github.com/first-agri/twenty-mcp#readme",
   "dependencies": {
     "@clerk/clerk-sdk-node": "^5.0.0",
     "@clerk/types": "^4.0.0",
